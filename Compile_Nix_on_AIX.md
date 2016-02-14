@@ -1,0 +1,119 @@
+---
+title: Compile Nix on AIX
+permalink: /Compile_Nix_on_AIX/
+---
+
+box configuration
+=================
+
+`> /usr/sbin/prtconf`
+`Processor Type: PowerPC_POWER5`
+`Processor Implementation Mode: POWER 5`
+`Processor Version: PV_5_3 <= aix 5.3`
+`Number Of Processors: 1`
+`Processor Clock Speed: 2097 MHz`
+`CPU Type: 64-bit`
+`Kernel Type: 64-bit`
+
+Requirements
+============
+
+My box had very minimal configuration. So I discovered that need to install some additional software to compile nix. Some packages I have downloaded from ibm.com, but most from <http://www.perzl.org/aix/>
+
+AIX packages
+------------
+
+<http://www-03.ibm.com/systems/power/software/aix/linux/toolbox/alpha.html>
+
+`#this requires for sed. I could not install latest gettext-0.17-1.aix5.1.ppc.rpm because it required to install too many others`
+`rpm -i gettext-0.10.40-8.aix5.2.ppc.rpm `
+
+perzl.org
+---------
+
+All packages below you can find on <http://www.perzl.org/aix/>
+
+`curl-7.9.3-2.aix4.3.ppc.rpm`
+`make-3.80-1.aix5.1.ppc.rpm`
+`gcc-4.2.4-2.aix5.2.ppc.rpm`
+`gcc-c++-4.2.4-2.aix5.2.ppc.rpm`
+`gcc-cpp-4.2.4-2.aix5.2.ppc.rpm`
+`libgcc-4.2.4-2.aix5.2.ppc.rpm`
+`libstdc++-4.2.4-2.aix5.2.ppc.rpm`
+`libstdc++-devel-4.2.4-2.aix5.2.ppc.rpm`
+`info-4.6-1.aix5.1.ppc.rpm`
+`sed-4.2.1-2.aix5.1.ppc.rpm`
+
+To install in the folder with all rpms
+
+`rpm -i *.rpm`
+
+You need to make sure that you have proper version of tar. I had very old 1.13 version and had issues during unpacking of some nixexprs.tar.bz2
+
+`tar-1.26-1.aix5.1.ppc.rpm`
+
+coreutils
+---------
+
+coreutils was compiled and installed separately, just because I had to upgrade too many packages to install rpm You can find core utils here <http://www.gnu.org/software/coreutils/>. I had troubles to compile the latest version of core utils so I finally picked version 8.4. But you may have better luck to compile latest or you may just install ready to go rpm
+
+`export PATH=/opt/freeware/bin:$PATH #we need this for gmake`
+`rm -rf /opt/qib/app/coreutils-8.4`
+`./configure --prefix=/opt/qib/app/coreutils-8.4`
+`make`
+`make install`
+
+If you noticed I have used /opt/qib/app/ folder to install my own packages. You can use your own location
+
+compilation of nix
+==================
+
+I downloaded the latest nix-0.16 from <http://nixos.org/nix/download.html>
+
+user-envs.builder.sh had small issue. AIX does not have $shell environment variable, but has $SHELL. This small change helped to correct user-envs.sh and remote-store.sh failure
+
+`#`
+`#`
+`# --enable-static - otherwise nix-env coredumps`
+`# --enable-static-nix - otherwise nix-env coredumps`
+`# --disable-largefile - prevent linking issues`
+`# --localstatedir - point to /home/lowes/ with enough space`
+`# --with-store-dir - point to /home/lowes/ with enough space`
+`# --with-system - uname -m works incorrectly on AIX so configure`
+`#                 was not able to set properly machine`
+`#`
+`#`
+`#`
+`#fallocate function does not work correctly on AIX`
+`#`
+`export PATH=/opt/freeware/bin:$PATH`
+`export PATH=/opt/qib/app/coreutils-8.4/bin/:$PATH`
+`export INSTALL_DIR=/opt/qib/app/nix-0.16`
+`rm -rf ${INSTALL_DIR} \`
+`&& ./configure \`
+` --prefix=${INSTALL_DIR} \`
+` --localstatedir=/home/lowes/nix/var \`
+` --with-store-dir=/home/lowes/nix/store \`
+` --enable-static \`
+` --enable-static-nix \`
+` --disable-largefile \`
+` --with-system=powerpc-aix \`
+` --with-coreutils-bin=/opt/qib/app/coreutils-8.4/bin \`
+`&& perl -p -i -e 's/#define HAVE_POSIX_FALLOCATE 1/\/\*#define HAVE_POSIX_FALLOCATE 1\*\//g' config.h \`
+`&& perl -p -i -e 's/\$shell/\$SHELL/g' tests/user-envs.builder.sh \`
+`&& make \`
+`&& make check \`
+`&& make install`
+
+Run nix-env
+===========
+
+I discovered that nix-env requires memory in data segment I had to use <http://publib.boulder.ibm.com/tividd/td/ITAME/GC32-0846-00/en_US/HTML/am39_perftune11.htm>
+
+`export LDR_CNTRL=MAXDATA=0x2000000`
+
+Next you can use instructions for simple verification of nix-env <http://nixos.org/nixpkgs/download.html>
+
+`nix-channel --add `[`http://nixos.org/releases/nixpkgs/channels/nixpkgs-unstable`](http://nixos.org/releases/nixpkgs/channels/nixpkgs-unstable)
+`nix-channel --update`
+`nix-env -qa \*`

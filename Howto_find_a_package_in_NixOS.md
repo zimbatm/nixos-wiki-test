@@ -1,0 +1,48 @@
+---
+title: Howto find a package in NixOS
+permalink: /Howto_find_a_package_in_NixOS/
+---
+
+This page's intended audience is advanced Nix users. For a newbie-friendly and more up-to-date page, see [Installing Packages](/Nix_Installing_Packages "wikilink")
+
+Simple package query
+--------------------
+
+The most straight-forward way to see a list of all available packages is to use the `nix-env` command. This method is a bit slow, as every package must be evaluated when generating the list. (Note: In the results, the first column is the package's attribute path.)
+
+      nix-env -qa [-P] [--out-path] [ -f $NIXPKGS_ALL ]
+
+Aliases
+-------
+
+The command to query available packages is relatively long, but we can define shortcuts or aliases. To define a shell function as an alias, Bash-shell users can add this to their `~/.bashrc` file.
+
+    queryNixPkgs(){ nix-env -qa \* -P -f $NIXPKGS_ALL | grep -i "$1"; }
+
+Install by attribute
+--------------------
+
+A package can be defined in a few different ways. Sometimes, a package is implemented in a complicated way, likely to share part of its definition with another package. In a case like this, a package may be defined in an attribute set one level deeper than the usual package set defined in the `top-level/all-packages.nix` file.
+
+For example, the following Nix expression contains the `myPackage` package, defined in a deep attribute set.
+
+    {
+      attr = { subattr = { subattr = { myPackage = mkDerivation ...; } } }
+      # Or, an alternative notation:
+      attr.subattr.subattr.package = mkDerivation ...;
+    }
+
+Packages which are defined in a set deeper than normal can be added to a higher-level set by using the `recurseIntoAttrs` function. If they are included in a higher-level set, their installation should be simple. If not, the package can be referenced by using its full attribute path in an expression.
+
+For example, to install the package defined in the above Nix expression, pass its full attribute path to the `nix-env` program and use the `-A` flag.
+
+    nix-env -i -A attr.subattr.subattr.package
+
+Indexing and searching Nix files
+--------------------------------
+
+One method of quickly finding the attribute names of packages is to use the Ctags program, which is a tool used for code navigation. To use this method, install the [`ctagsWrapped`](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/misc/ctags/wrapped.nix) package, then use the `ctags` command line program to index Nix files or directories of Nix files, such as a directory which contains the NixPkgs repository. This package customizes a ctags installation by adding a definition for the Nix syntax. To learn more about the Ctags program, read the [website](http://ctags.sourceforge.net/%7Cctags).
+
+Another method of indexing Nix expressions is to use the ID Utils program. The \[HOWTO:idutils|IdUtils\] wiki page has more details. To learn more about the ID Utils program, read the [Utils website](https://www.gnu.org/software/idutils/%7CID).
+
+[Category:Installation](/Category:Installation "wikilink") [Category:Nixpkgs](/Category:Nixpkgs "wikilink")

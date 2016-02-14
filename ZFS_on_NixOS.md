@@ -1,0 +1,149 @@
+---
+title: ZFS on NixOS
+permalink: /ZFS_on_NixOS/
+---
+
+NixOS has native support for ZFS. It uses the code from the [ZFS on Linux project](http://zfsonlinux.org/), including kernel modules and userspace utilities.
+
+What works
+----------
+
+All functionality supported by ZFS on Linux, including:
+
+-   Using ZFS as the root filesystem (using either MS-DOS or GPT partitions)
+-   Encrypted ZFS pools (using Linux's dm-crypt)
+-   All the other ZFS goodies (cheap snapshotting, checksumming, compression, RAID-Z, ...)
+-   Auto-snapshotting service
+
+Known issues
+------------
+
+-   As of 2014-03-04, you shouldn't use a ZVol as a swap device, as it can deadlock under memory pressure
+-   As of 2014-03-04, you should set the `mountpoint` property of your ZFS filesystems to be `legacy` and let NixOS mount them like any other filesystem (such as ext4 or btrfs), otherwise some filesystems may fail to mount due to ordering issues
+-   As of 2014-03-04, all ZFS pools available to the system will be forcibly imported during boot, regardless if you had imported them before or not. You should be careful not to have any other system accessing them at the same time, otherwise it will corrupt your pools. Normally (for the common desktop user) this should not be a problem, as a hard disk is usually only directly connected to one machine.
+
+How to use it
+-------------
+
+Just add the following to your `configuration.nix` file:
+
+      boot.supportedFilesystems = [ "zfs" ];
+
+And run `nixos-rebuild switch`, as usual.
+
+All ZFS functionality should now be available.
+
+If you want NixOS to auto-mount your ZFS filesystems during boot, you should set their `mountpoint` property to `legacy` and treat it like if it were any other filesystem, i.e.: mount the filesystem manually and regenerate your list of filesystems, as such:
+
+      zfs set mountpoint=legacy <pool>/<fs>
+      mount -t zfs <pool>/<fs> <mountpoint>
+
+      # This will regenerate your /etc/nixos/hardware-configuration.nix file:
+      nixos-generate-config
+
+      nixos-rebuild switch
+
+NixOS will now make sure that your filesystem is always mounted during boot. The `nixos-generate-config` command regenerates your `/etc/nixos/hardware-configuration.nix` file, which includes the list of filesystems for NixOS to mount during boot, e.g.:
+
+    (...)
+      fileSystems."/home" =
+        { device = "rpool/home";
+          fsType = "zfs";
+        };
+
+      fileSystems."/backup" =
+        { device = "rpool/backup";
+          fsType = "zfs";
+        };
+    (...)
+
+How to install NixOS on a ZFS root filesystem
+---------------------------------------------
+
+Here's an example of how to create a ZFS root pool using 4 disks in RAID-10 mode (striping+mirroring), create a ZFS root+home filesystems and install NixOS on them: (thanks to Danny Wilson for the instructions)
+
+    # Add the zfs filesystem to the install environment:
+    nano /etc/nixos/configuration.nix
+
+    ## ---8<-------------------------8<---
+      boot.supportedFilesystems = [ "zfs" ];
+    ## ---8<-------------------------8<---
+
+    nixos-rebuild switch
+
+    # Load the just installed ZFS kernel module
+    modprobe zfs
+
+    # Create boot partition and (zfs) data partition
+    # See: https://github.com/zfsonlinux/pkg-zfs/wiki/HOWTO-install-Ubuntu-to-a-Native-ZFS-Root-Filesystem#step-2-disk-partitioning
+    fdisk /dev/sda
+
+    # Copy the partition table to the other disks
+    sfdisk --dump /dev/sda | sfdisk /dev/sdb
+    sfdisk --dump /dev/sda | sfdisk /dev/sdc
+    sfdisk --dump /dev/sda | sfdisk /dev/sdd
+
+    # Create a RAID-10 ZFS pool. Use "-o ashift=12" to create your ZFS pool with 4K sectors
+    zpool create -o ashift=12 -o altroot=/mnt rpool mirror /dev/sda2 /dev/sdb2 mirror /dev/sdc2 /dev/sdd2
+
+    # Create the filesystems
+    zfs create -o mountpoint=none rpool/ROOT
+    zfs create -o mountpoint=legacy rpool/ROOT/nixos
+    zfs create -o mountpoint=legacy rpool/HOME
+    zfs set compression=lz4 rpool/HOME    # compress the home directories automatically
+
+    # Mount the filesystems manually
+    mount -t zfs rpool/ROOT/nixos /mnt
+
+    mkdir /mnt/home
+    mount -t zfs rpool/HOME /mnt/home
+
+    # Create a raid mirror of the first partitions for /boot (GRUB)
+    mdadm --build /dev/md127 --metadata=0.90 --level=1 --raid-devices=4 /dev/sd[a,b,c,d]1
+    mkfs.ext4 -m 0 -L boot -j /dev/md127
+
+    mkdir /mnt/boot
+    mount /dev/md127 /mnt/boot
+
+    # Generate the NixOS configuration, as per the NixOS manual
+    nixos-generate-config --root /mnt
+
+    # Now edit the generated hardware config:
+    nano /mnt/etc/nixos/hardware-configuration.nix
+
+    ## ---8<-------------------------8<---
+    # This is what you want:
+
+      fileSystems."/" =
+        { device = "rpool/ROOT/nixos";
+          fsType = "zfs";
+        };
+
+      fileSystems."/home" =
+        { device = "rpool/HOME";
+          fsType = "zfs";
+        };
+
+      fileSystems."/boot" =
+        { device = "/dev/md127";
+          fsType = "ext4";
+        };
+    ## ---8<-------------------------8<---
+
+    # configuration.nix needs an adjustment:
+    nano /mnt/etc/nixos/configuration.nix
+
+    ## ---8<-------------------------8<---
+    # This is some more of what you want:
+
+      boot.loader.grub.devices = [ "/dev/sda" "/dev/sdb" "/dev/sdc" "/dev/sdd" ];
+      boot.supportedFilesystems = [ "zfs" ];
+    ## ---8<-------------------------8<---
+
+    # Ready to go!
+    nixos-install
+
+Need more info?
+---------------
+
+Feel free to ask your questions on the NixOS mailing list or the IRC channel: <http://nixos.org/development/>

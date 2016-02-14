@@ -1,0 +1,53 @@
+---
+title: How to enable subpixel rendering in freetype
+permalink: /How_to_enable_subpixel_rendering_in_freetype/
+---
+
+Why
+===
+
+Nixos doesn't enable subpixel rendering by default because it is covered by patents. From the FreeType source code:
+
+    Note that this feature is covered by several Microsoft
+    patents and should not be activated in any default
+    build of the library.
+
+How to enable
+=============
+
+The expression for FreeType in Nixpkgs takes an option `useEncumberedCode` which enables subpixel rendering. It is disabled by default because of patent issues. We could use `packageOverrides` to override the FreeType package with a version that has subpixel rendering enable, but we would have to locally rebuild almost all GUI packages. Instead, we will use a trick:
+
+1.  Build most of the system normally using the default FreeType.
+2.  Build a version of FreeType with subpixel rendering enabled.
+3.  Set LD_LIBRARY_PATH so the subpixel-enabled FreeType is preferred.
+
+The code snippets below all belong in `/etc/nixos/configuration.nix`.
+
+We use `packageOverrides` to define a new FreeType expression with a unique name and subpixel rendering enabled:
+
+      nixpkgs.config.packageOverrides = pkgs: {
+        freetype_subpixel = pkgs.freetype.override {
+          useEncumberedCode = true;
+        };
+      };
+
+To ensure that our new freetype package is built and isn't garbage collected, we add it to the system environment:
+
+      environment.systemPackages = [ pkgs.freetype_subpixel ];
+
+Finally, we add the subpixel-enabled FreeType to `LD_LIBRARY_PATH`:
+
+      environment.variables.LD_LIBRARY_PATH = [ "${pkgs.freetype_subpixel}/lib" ];
+
+Rebuild the system and reboot. Your environment should look like this:
+
+    $ env | grep LD_LIBR
+    LD_LIBRARY_PATH=/nix/store/jxss54j52paqwns8zvm6mwr7f89ck7ya-freetype-2.4.4/lib:/run/opengl-driver/lib:/run/opengl-driver-32/lib
+
+Links
+=====
+
+-   [Subpixel layout](http://www.lagom.nl/lcd-test/subpixel.php)
+-   [Font testing page](http://www.infinality.net/files/font.html)
+
+Thanks Eelco for the idea.

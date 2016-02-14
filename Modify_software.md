@@ -1,0 +1,43 @@
+---
+title: Modify software
+permalink: /Modify_software/
+---
+
+1. goto the derivation and add a postBuild="fail" or such
+
+2. run this command:
+
+` nix-env -i firefox -K`
+
+3. then go into the failed build directory shown in the end of the error message, like:
+
+` cd /tmp/nix-build-f3slzg4g3h99yqcj6lzjwc1cvcdwg6dd-torcx.drv-0`
+` `
+` /nix/store/b48470bj4b8d4x6z5rr62924n30cwsiq-stdenv/setup: line 16: fail: command not found`
+``  builder for `/nix/store/f3slzg4g3h99yqcj6lzjwc1cvcdwg6dd-torcx.drv' failed; keeping build directory `/tmp/nix-build-f3slzg4g3h99yqcj6lzjwc1cvcdwg6dd-torcx.drv-0' ``
+``  builder for `/nix/store/f3slzg4g3h99yqcj6lzjwc1cvcdwg6dd-torcx.drv' failed with exit code 127 ``
+``  error: build of `/nix/store/f3slzg4g3h99yqcj6lzjwc1cvcdwg6dd-torcx.drv' failed  ``
+
+4. ls in this directory shows two files like:
+
+` env-vars  torcs-1.3.3/`
+
+5. type
+
+` source env-vars`
+
+5. then go into the torcs-1.3.3/ dir
+
+` cd torcs-1.3.3/`
+
+6. now do what you want to
+
+Then cd /tmp/nix-build-...
+
+start a subshell, then source env-vars
+
+Or find out how to do the same with the --shell-command for nix-env
+
+` nix-build --run-env --command /bin/sh -A slim $NIXPKGS_ALL`
+
+[Category:Development](/Category:Development "wikilink") [Category:Nixpkgs](/Category:Nixpkgs "wikilink")

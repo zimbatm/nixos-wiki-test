@@ -1,0 +1,21 @@
+---
+title: NixOS Modifying Modules
+permalink: /NixOS_Modifying_Modules/
+---
+
+NixOS provides many modules which install and configure software, and these modules provide an interface which allows a user to change configuration options. Sometimes, the module's interface doesn't provide an option which will produce our desired configuration, so we must modify the NixOS module to add this option. Or, sometimes the implementation of a module or its options is incorrect, and we must modify the module to fix it.
+
+We have a few options to modify existing NixOS modules.
+
+-   Fork the NixPkgs project and modify the module's implementation in our fork, then, optionally, push this modification back to the project.
+-   Create a Nix expression which overrides the existing module.
+
+Fork and Modify NixPkgs
+-----------------------
+
+!!! To do: Using the [Nix_Modifying_Packages](/Nix_Modifying_Packages "wikilink") page as a template, add instructions here.
+
+Overriding Existing an Existing Module
+--------------------------------------
+
+!!! To do: Using the [Manual: Customising Packages](http://nixos.org/nixos/manual/#sec-customising-packages%7CNixOS) as a guide, add instructions here.

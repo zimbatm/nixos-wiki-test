@@ -1,0 +1,71 @@
+---
+title: GSOC 2015 ideas list
+permalink: /GSOC_2015_ideas_list/
+---
+
+Want to spend your summer contributing full-time to NixOS and get paid for it?
+
+Most ideas listed here have a contact person associated with them. Please get in touch with them earlier rather than later to develop your idea into a complete application. You can find many of them on Freenode's IRC network under the same username. If there is no contact information, please join the nix-dev mailing list or \#nixos on the Freenode IRC network, and we will work with you to find a mentor and discuss your idea.
+
+You don't have to apply for one of these ideas! You can come up with your own, or pick something from the issues trackers of the various projects at <https://github.com/NixOS> (especially nix and nixpkgs), and as long as it fits into Nix stack, we'll be happy to work with you to develop it. Remember, your project needs to have deliverables in less than 3 months of work in most cases. Be ambitious but not too ambitious ;)
+
+Ideas
+-----
+
+### Packaging Gnome 3
+
+While there's been initial work done to have a minimal gnome-shell running, we're far from claiming support of Gnome 3.
+
+To get a better idea what's done and what's left to be acomplished, see <https://github.com/NixOS/nixpkgs/issues/247>
+
+Contact: Domen Kožar (domen@dev.si)
+
+### Improving Python support
+
+Currently we have python 2.6 - 3.3 and PyPy support in Nix. Improving Python support is an on-going effort <https://github.com/NixOS/nixpkgs/pull/1467>, but much more could be done.
+
+Improvements:
+
+-   add modules support for python 3 and PyPy
+-   write documentation (packaging for python currently almost doesn't have any)
+-   convert buildPythonPackage to python.mkDerivation
+-   produce usable pypi2nix script <https://github.com/garbas/pypi2nix>
+-   split out usable functions for software having python bindings but not using distutils/setuptools
+-   make \`python-packages.nix\` self referential and being able to use \`pythonPackages.pyramid.override\` function
+-   make python software developemnt usable with nix-shell
+
+Contact: Domen Kožar (domen@dev.si)
+
+### Private files in the nix store
+
+Currently, all files in the nix store are world-readable, which means that NixOS configurations that need passwords or other credentials need to point to paths outside of the store. It would be awesome if we could come up with a principled way to fix this limitation. Some discussion of the issue can be found at <https://github.com/NixOS/nix/issues/8>.
+
+Contact: Shea Levy (shea@shealevy.com, shlevy on IRC)
+
+### Low-level improvements to nix performance
+
+There may be some low-hanging fruit for improving performance of evaluation of nix expressions or nix builds. Some ideas that might be worth exploring:
+
+-   Using lazy cons/nil lists instead of vectors for the list data type (and updating general list functions in the nixpkgs lib accordingly)
+-   Replacing .drv files, a potential IO bottleneck, with a purely in-memory representation of derivations
+-   Fix some instances of reading entire files into memory instead of streaming
+-   For the ambitious: multithreaded evaluation and/or building.
+
+Contact: Shea Levy (shea@shealevy.com, shlevy on IRC)
+
+### Multiple outputs infrastructure in nixpkgs
+
+nix has a feature known as "multiple outputs", where a single derivation can produce multiple outputs which can be downloaded and garbage-collected independently. So for example, glibc might have one output containing the libraries and another containing the headers, and most users would only need the libraries and would only need to download the headers when performing a build. Judicious use of this feature could greatly reduce the size of closures of various packages/the system configuration. Coming up with a good general way for "normal-case" packages in nixpkgs to take advantage of this would be a great benefit.
+
+Contact: Shea Levy (shea@shealevy.com, shlevy on IRC)
+
+
+This has already been partially done in the multiple-outputs branch. [EelcoDolstra](/User:EelcoDolstra "wikilink") ([talk](/User_talk:EelcoDolstra "wikilink")) 11:24, 14 February 2014 (CET)
+
+### Lightweight NixOS containers
+
+NixOS has some very basic support for running other NixOS configurations as lightweight containers via systemd-nspawn (see [here](https://github.com/NixOS/nixpkgs/commit/9ee30cd9b51c46cea7193993d006bb4301588001) for details). However, it lacks many features, such as setting up proper networking (each container should have its own private network interface). Also, containers created via systemd-nspawn [are not really secure](http://lists.freedesktop.org/archives/systemd-devel/2011-April/002077.html). And changing the configuration of a container is currently realised by rebooting the entire container (rather than running switch-to-configuration inside the container). So there is much to be improved to make this production-ready.
+
+Another application of lightweight containers is to run NixOS services in private mount namespace where they can only see those parts of the filesystem that they really need. For instance, PostgreSQL should only have access to (say) /var/db/postgresql and the closure of PostgreSQL in the Nix store. If we have this, then we know exactly where the state of a service is stored (since it cannot touch anything else). This would allow tools like NixOps to migrate services \*with\* their state between machines. So if you changed the region of an EC2 machine in a NixOps specification from us-east-1 to eu-west-1, NixOps would actually be able to create a new machine in eu-west-1, copy all state, and kill the us-east-1 machine. This would be awesome, as finally getting a good handle on mutable state is something of a holy grail :-)
+
+Contact: Eelco Dolstra (eelco.dolstra@logicblox.com)

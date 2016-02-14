@@ -1,0 +1,60 @@
+---
+title: Installing Hydra on Ubuntu
+permalink: /Installing_Hydra_on_Ubuntu/
+---
+
+` $ apt-get install postgresql`
+
+` $ sudo -u postgres createuser hydra -P`
+` Enter password for new role: `
+` Enter it again: `
+` Shall the new role be a superuser? (y/n) n`
+` Shall the new role be allowed to create databases? (y/n) n`
+` Shall the new role be allowed to create more new roles? (y/n) n`
+
+` $ sudo -u postgres createdb -O hydra hydra`
+
+` $ nix-channel --add `[`http://hydra.nixos.org/jobset/hydra/trunk/channel/latest`](http://hydra.nixos.org/jobset/hydra/trunk/channel/latest)
+` $ nix-channel --update`
+` $ nix-env -i hydra`
+
+` $ mkdir $HOME/hydra`
+
+Add to the .profile of the user running hydra:
+
+` export HYDRA_DBI="dbi:Pg:dbname=hydra;host=localhost;user=hydra;"`
+` export HYDRA_DATA=$HOME/hydra`
+` export HYDRA_CONFIG="$HOME/hydra/hydra.conf"`
+
+Change the line in /etc/postgresql/8.4/main/pg_hba.conf
+
+` local   all         all                               ident`
+
+into
+
+` local   all         all                               md5`
+
+and restart the postgresql service
+
+` $ sudo -u postgres /etc/init.d/postgresql restart`
+
+Gives user hydra all rights to the database:
+
+` $ echo "GRANT ALL ON DATABASE hydra TO hydra;" | sudo -u postgres psql hydra`
+
+Create .pgpass with following contents:
+
+` localhost:*:*:hydra:yourpassword`
+
+Make sure permissions are set correctly
+
+` $ chmod 0600 $HOME/.pgpass`
+
+Initialize the database:
+
+` $ cat $HOME/.nix-profile/share/hydra/sql/hydra-postgresql.sql | psql -U hydra hydra`
+
+Add user root to hydra and make admin:
+
+` $ echo "INSERT INTO Users(userName, emailAddress, password) VALUES ('root', 'some@email.com', '$(echo -n foobar | sha1sum | cut -c1-40)');" | psql -U hydra hydra `
+` $ echo "INSERT INTO UserRoles(userName, role) values('root', 'admin');" | psql -U hydra hydra`

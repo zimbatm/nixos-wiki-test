@@ -1,0 +1,317 @@
+---
+title: Development Environments
+permalink: /Development_Environments/
+---
+
+What is a Development Environment? Many software developers use an IDE to edit source code, such as [KDevelop IDE](http://www.kdevelop.org) or [Eclipse](http://www.eclipse.org).
+
+In this article, we will discuss how to use tools such as these to develop an application. An application is built with a standard compiler, CMake, and QT. To get started working on an application, we need have the ability to build it, which means we need to install its tools into our environment. When we say "install a tool into an environment", what does this mean? In this case, it means the tools must be easily accessible from a terminal. To clarify, when a tool, such as Make, is **not** installed in our environment and we type `make` in a shell, an error will be displayed, telling us that "make" does not exist.
+
+How can we use Nix to obtain an environment which contains all tools required to work on a project? Well, a Nix-packaged app has a list of tools required to *build* the app, so we can use its Nix expression to install them. If we need more tools, such as an editor or IDE, we can create a Nix expression which defines tools we want, then install them in a custom environment.
+
+### Obtaining an Environment from an App's Nix Package
+
+A Nix package declares everything required to build the packaged code. Therefore, if we want to work on the packaged app, we can ask the package manager to set up the tools for us. Normally, when Nix builds a package, it builds it in an isolated environment. It does this by creating a child shell, clearing it to a blank slate, then adding only the dependencies the package declares. After setting up the dependencies, it runs the build script, moves the built app into the Nix store, and sets up the environment to point to it. Finally, it destroys this child shell.
+
+We want to iteratively modify and build the packaged app. Can we ask Nix to *not*' destroy the child shell, and instead let us use it for working on the app? Yes we can. A Nix command was created for exactly this use-case - the `nix-shell` command. For example, to work on the `nvi` Nix-packaged app, use the following command to set up all build tools in a child shell.
+
+` nix-shell [--command /bin/sh] nvi`
+
+To work on a package within nixpkg's: pass the path to nixpkgs to nix-shell, specify the package by attribute.
+
+` nix-shell nixpkgs -A systemd`
+
+Additional info: <https://github.com/NixOS/nix/commit/7f38087f35e6f74a73bfdb28da8acd8930565d51>
+
+#### Using the nix-shell environment
+
+The environment provided by nix-shell has all appropriate environment variables set and `setup` sourced.
+
+For example, in a `systemd` nix-shell environment. The environment variables include:
+
+-   `src = /nix/store/0cg52ncqn9lajgdy4njma3wk7lf3591d-systemd-212.tar.xz`
+-   `patches = /nix/store/slczdayjgxh55kijyhs8y57ga7jcapy3-fixes.patch`
+-   `NIX_CFLAGS_COMPILE = -UPOLKIT_AGENT_BINARY_PATH -DPOLKIT_AGENT_BINARY_PATH="`(continues for much longer.)
+
+`setup` adds functions for each of the phases. These can be called manually to step through the standard package build process:
+
+-   `unpackPhase` will unpack the source archive in `$src`
+-   `patchPhase` will patch the source.
+-   `configurePhase` will configure the unpacked source
+-   and so on
+
+### Obtaining an Environment from a Custom Definition
+
+The first solution, to rely on the Nix package, will give us a single shell which can build the app, which is a very useful tool. Sometimes, however, we want to use the entire OS as a development environment, rather than a single shell. This implies that every new shell, as well as every application we launch from the desktop, will be able to build the app. How can we do this?
+
+If we answer this question in the context of NixOS, we are asking about the "User Environment", which is a set of "active" applications. Remember, a user can install many applications using Nix, but they are all hidden in the Nix store behind hash-named directories. To use these applications, they must be made visible to a shell by adding these applications to the `PATH` environment variable. The implementation is rather complicated, but the key idea is that Nix manages which of its applications are visible. This set of applications is called a "User Environment".
+
+#### Introducing myEnvFun
+
+So, our goal is to create a User Environment which contains all required tools to edit a Nix-packaged app. How do we create this User Environment? An app was created which helps us define a custom User Environment and then switch to it. This package is called `myEnvFun`.
+
+How do we use `myEnvFun`? Currently, it requires a bit of setup. If you want to read existing documentation, you have to read the [`myEnvFun` source code](https://github.com/NixOS/nixpkgs/blob/master/pkgs/misc/my-env/default.nix). I'm trying to better document this tool with this Wiki page.
+
+So, how do we use this tool? The idea is that we write a Nix expression which defines a development environment, more precisely, **the tools** we want in our development environment. Nix manages dependencies and ensures they are built. Can we say that code editing tools are dependencies of a development environment? Sure!
+
+So, the idea is that we create a Nix expression which accepts a name and a set of Nix packages. The name will be the name of the development environment, and the set of Nix packages will be the set of tools we need to work on the application.
+
+First, place the Nix expression which defines our development environment in `~/.nixpkgs/config.nix`. Using the following code as a template, we can create an environment, name it, and add tools to it.
+
+` {`
+`   packageOverrides = pkgs : with pkgs; {`
+`     sdlEnv = pkgs.myEnvFun {`
+`         name = "someEnvName";`
+`         buildInputs = [ stdenv pkgconfig toolOne toolTwo toolThree ];`
+`     };`
+`   };`
+` }`
+
+With this development environment defined, we install the package which contains it with the following command. Note that the package which contains our environment uses a `env-<envName>` naming convention.
+
+` $ nix-env -i env-someEnvName`
+
+To switch to this environment, we use the following command. Note the naming convention.
+
+` $ load-env-someEnvName`
+
+#### Using myEnvFun Environments
+
+To test the results, try to use one of this environment's tools from this shell.
+
+Other shells won't have this environment, so we must use the `load-env-someEnvName` command again to switch to the environment before using its tools.
+
+#### Example: "SDL" Environment
+
+The author of [this blog post](http://invalidmagic.wordpress.com/2012/03/23/developing-software-using-nixos/) shows how to use the `myEnvFun` tool to create an environment to use SDL. He creates an SDL environment for it with the following Nix expression.
+
+` {`
+`   packageOverrides = pkgs : with pkgs; {`
+`     sdlEnv = pkgs.myEnvFun {`
+`         name = "sdl";`
+`         buildInputs = [ stdenv SDL SDL_image SDL_ttf SDL_gfx cmake SDL_net pkgconfig ];`
+`     };`
+`   };`
+` }`
+
+Then, we can use the SDL environment as follows.
+
+First, load the SDL environment.
+
+` [~/Desktop/projects]$ load-env-sdl`
+` env-sdl loaded`
+
+Then we can use commands which exist only in this SDL environment, because they exist in Nix packages declared in the environment definition. For example, we can use the `sdl-config` command to get cflags.
+
+` sdl:[~/Desktop/projects]$ sdl-config --cflags`
+` -I/nix/store/652x8hnhja32z3ja4hip04ygn8mh9cwi-SDL-1.2.14/include/SDL -D_GNU_SOURCE=1 -D_REENTRANT`
+
+And we can use `sdl-config` command to get library position.
+
+` sdl:[~/Desktop/projects]$ sdl-config --libs`
+` -L/nix/store/652x8hnhja32z3ja4hip04ygn8mh9cwi-SDL-1.2.14/lib -Wl,-rpath,/nix/store/652x8hnhja32z3ja4hip04ygn8mh9cwi-SDL-1.2.14/lib -lSDL -lpthread`
+
+In the `Makefile` of a project which uses SDL, we usually use `sdl-config` to get these values and paths. In an SDL environment, we can also use these commands.
+
+#### Example: ~/.nixpkgs/config in combination to nixpkgs git checkout
+
+The above example simply assumes you are using nix-channels but **if the your software also requires changes to nixpkgs** as well, you have to do this:
+
+instead of:
+
+`   nix-env -i env-someEnvName`
+
+do
+
+`   nix-env -f /home/joachim/Desktop/projects/nixos/nixpkgs -i env-someEnvName`
+
+this will make sure that you are not only using ~/.nixpkgs/config but put that on top of your git checkout of nixpkgs.
+
+#### Related Topics
+
+##### Using Libraries not using `pkgconfig`
+
+When you load `load-env-sdl` there will be some additional environment variables set:
+
+-   CMAKE_PREFIX_PATH
+-   NIX_CFLAGS_COMPILE
+-   NIX_LDFLAGS
+
+All these variables contain include paths and ldflags used by the compiler.
+
+##### Code Completion in KDevelop IDE
+
+The KDevelop IDE has a code completion feature, but it will only work if it has access to the source code of referenced libraries. This is a problem on NixOS, because these libraries exist in the Nix store, which is unique among Linux distributions. To make the correct libraries visible to KDevelop when working on a project, launch it from a shell which was created from the `myEnvFun` tool. The following commands can give you an idea.
+
+` rm -Rf myCustomProject/build/*`
+` load-env-sdl #(where the project would use cmake)`
+
+Now, start `kdevelop` from this shell, which is the development environment for SDL. Import the `CMakeLists.txt` of the project. When KDevelop asks where to build the project, choose the default option, `myCustomProject/build`. After building the selection, code completion should work for the whole project. What might not work, however, is opening several projects in the same KDevelop session.
+
+Sample Development Environments
+-------------------------------
+
+### Example 1: Using nix-shell to Initialize a Development Shell
+
+This example shows a Nix expression which packages an application that uses the Clang compiler.
+
+`   # clang.nix`
+`   `
+`   let`
+`     pkgs = import `<nixpkgs>` {};`
+`     stdenv = pkgs.stdenv;`
+`   in rec {`
+`     clangEnv = stdenv.mkDerivation rec {`
+`       name = "clang-env";`
+`       version = "1.1.1.1";`
+`       src = ./.;`
+`       buildInputs = [ pkgs.clang ];`
+`     };`
+`   }`
+
+This `clang-env` package can be used with `nix-shell` by using the following command.
+
+`   $ nix-shell clang.nix -A clangEnv`
+
+### Example 2: Using myEnvFun to Create a Persistent Development Environment
+
+The main difference between `myEnvFun` and `nix-shell` is the separation between building a development environment and activating it. If we use `myEnvFun`, we can individually perform these two steps. This allows us to control when that environment gets updated. Also, if we use a Nix user profile, we can roll back to an earlier environment.
+
+To illustrate, suppose we have defined a development environment which contains Clang, as defined by the following Nix expression.
+
+`   # clangenv.nix`
+`   `
+`   let`
+`      pkgs = import `<nixpkgs>` {};`
+`      stdenv = pkgs.stdenv;`
+`   in rec {`
+`       clangEnv = pkgs.myEnvFun {`
+`         name = "clang-env";`
+`         buildInputs = with pkgs; [ clang ];`
+`       };`
+`   }`
+
+We can build this environment and activate it in two separate steps.
+
+`   # Build the environment.`
+`   $ nix-build -A clangEnv clangenv.nix`
+`   `
+`   # Activate the environment.`
+`   $ ./result/bin/load-env-clang`
+
+To lock this development environment, we can use a user profile. The following commands install our Clang environment into the `clang` user profile and makes a convenience link to that profile's Clang environment into the current directory.
+
+`   $ nix-env -iA clangEnv -f clangenv.nix -p /nix/var/nix/gcroots/profiles/per-user/clang`
+`   `
+`   # Make a convenience link.`
+`   $ ln -sf /nix/var/nix/gcroots/profiles/per-user/clang/bin/load-env-clang-env .`
+`   `
+`   # Activate the environment.`
+`   $ ./load-env-clang-env`
+`   `
+`   # Optionally, rollback to an earlier generation of this profile.`
+`   $ nix-env --list-generations -p /nix/var/nix/gcroots/profiles/per-user/clang`
+
+### Example 3: Python - Plone Development Environment
+
+`   {`
+`     # Define a myEnvFun environment, which makes use of pythonPlone`
+`     packageOverrides = pkgs: rec {`
+`    `
+`       # Define a version of Python which has access to all the Plone modules`
+`       # For 14.04 don't include "buildEnv".`
+`       pythonPlone = pkgs.pythonFull.buildEnv.override {`
+`         extraLibs = with pkgs.python27Packages; [ Plone ];`
+`       };`
+`    `
+`       plone = pkgs.myEnvFun {`
+`         name = "plone";`
+`         buildInputs = with pkgs; [`
+`           pythonPlone`
+`           python27Packages.zc_buildout_nix`
+`           stdenv # provides gcc for building python c extensions`
+`        ];`
+`        # Export the path to the custom version of Python with all the goodies`
+`        # Other Python command line utilies could also be used, e.g. IPython`
+`        extraCmds = ''`
+`          export PYTHONHOME=${pythonPlone}`
+`          unset http_proxy # otherwise downloads will fail ("nodtd.invalid")`
+`        '';`
+`       };`
+`    `
+`     };`
+`   }`
+
+### Example 4: Python Web Development Nixos Container
+
+The following environment can be used in a nixos-container for using traditional python package managers (pip, buildout etc.) in an impure way within a container. It's important to note that after rebuilding the container the libraries will change so it may be necessary to rebuild python c-modules. They can easily be identified by the architechture affix `ls -ld eggs/*linux-x86_64.egg`.
+
+`   environment = {`
+`     systemPackages = with pkgs; [`
+`       git`
+`       libxml2`
+`       libxslt`
+`       libzip`
+`       python27Full`
+`       python27Packages.virtualenv`
+`       stdenv`
+`       zlib`
+`     ];`
+` `
+`     pathsToLink = [ "/include" ];`
+` `
+`     shellInit = ''`
+`       # help pip to find libz.so when building lxml`
+`       export LIBRARY_PATH=/var/run/current-system/sw/lib`
+`       # ditto for header files, e.g. sqlite`
+`       export C_INCLUDE_PATH=/var/run/current-system/sw/include`
+`     '';`
+`   };`
+
+TIP: if you bind mount the container directory on the host, you may want to make symlinks in the container relative so you can also follow them on the host, e.g. if you want to edit the files from the host system rather than inside the container. The `symlinks` program makes this easy to achieve e.g. `symlinks -cr parts/omelette`.
+
+### Example 5: A simple impure environment to use virtualenv/pip with nix-shell
+
+For those in a hurry who just want to develop using Python, virtualenv, and pip.
+
+BEWARE: <https://github.com/NixOS/nixpkgs/issues/2411>
+
+Create a file named "default.nix" in your projects current directory:
+
+        with import <nixpkgs> {};
+        with pkgs.python27Packages;
+
+        buildPythonPackage {
+          name = "impurePythonEnv";
+          buildInputs = [
+             git
+             libxml2
+             libxslt
+             libzip
+             python27Full
+             python27Packages.virtualenv
+             stdenv
+             zlib ];
+          src = null;
+          # When used as `nix-shell --pure`
+          shellHook = ''
+          unset http_proxy
+          export GIT_SSL_CAINFO=/etc/ssl/certs/ca-bundle.crt
+          '';
+          # used when building environments
+          extraCmds = ''
+          unset http_proxy # otherwise downloads will fail ("nodtd.invalid")
+          export GIT_SSL_CAINFO=/etc/ssl/certs/ca-bundle.crt
+          '';
+        }
+
+Then in a shell type \`nix-shell --pure\` in the directory containing this default.nix file. Now create a virtualenv and pip install away!
+
+Summary
+-------
+
+We can add several different environments to our `~/.nixpkgs/config.nix` file, one for each project we work on. These can be used one at a time to develop a variety of projects while keeping each relatively isolated. We can exit these environments as one would exit any shell session, by using the `CTRL+D` shortcut or the `exit` command.
+
+What's the main benefit of using this technique? We don't pollute our main profile with many development tools, which may have conflicts. Also, we can use different versions of a library on the same system, selecting them by selecting a development environment.
+
+[Category:Development](/Category:Development "wikilink")

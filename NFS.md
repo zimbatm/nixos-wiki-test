@@ -1,0 +1,88 @@
+---
+title: NFS
+permalink: /NFS/
+---
+
+Server
+------
+
+The setup is very similar as it would be done in regular config file. I will use my setup as an example.
+
+I wish to share 4 mount-points (/mnt/kotomi, /mnt/mafuyu, /mnt/sen, /mnt/tomoyo) with my other computers which will run NFS clients.
+
+First I created a separate directory for NFS shares:
+
+    mkdir /export
+
+Then I mount (bind) the locations inside of /export from my config. Normally one would put it in /etc/fstab but nix generates that for us:
+
+    fileSystems."/export/mafuyu" = {
+      device = "/mnt/mafuyu";
+      options = "bind";
+    };
+
+    fileSystems."/export/sen" = {
+      device = "/mnt/sen";
+      options = "bind";
+    };
+
+    fileSystems."/export/tomoyo" = {
+      device = "/mnt/tomoyo";
+      options = "bind";
+    };
+
+    fileSystems."/export/kotomi" = {
+      device = "/mnt/kotomi";
+      options = "bind";
+    };
+
+Next we have to tell nix how we want to export these and to whom:
+
+    services.nfs.server.enable = true;
+    services.nfs.server.exports = ''
+      /export                 192.168.1.10(rw,fsid=0,no_subtree_check) 192.168.1.15(rw,fsid=0,no_subtree_check)
+      /export/kotomi          192.168.1.10(rw,nohide,insecure,no_subtree_check) 192.168.1.15(rw,nohide,insecure,no_subtree_check)
+      /export/mafuyu          192.168.1.10(rw,nohide,insecure,no_subtree_check) 192.168.1.15(rw,nohide,insecure,no_subtree_check)
+      /export/sen             192.168.1.10(rw,nohide,insecure,no_subtree_check) 192.168.1.15(rw,nohide,insecure,no_subtree_check)
+      /export/tomoyo          192.168.1.10(rw,nohide,insecure,no_subtree_check) 192.168.1.15(rw,nohide,insecure,no_subtree_check)
+    '';
+
+Here I export all my bound shares to 2 local IPs. For various flags, you can check the [Gentoo wiki NFSv4 article](https://wiki.gentoo.org/wiki/NFSv4#Server) which has a nice coverage.
+
+Remember that you can always use
+
+    nixos-option
+
+to check what's available.
+
+    [shana@lenalee:~]$ nixos-option services.nfs.server
+    This attribute set contains:
+    createMountPoints
+    enable
+    exports
+    hostName
+    nproc
+
+Please remember that NixOS by default has a firewall turned on! Add rules to allow NFS traffic or switch it off if you don't need it.
+
+Client
+------
+
+Setting up the client is very easy. To follow from the server example, say I want to mount the now exposed *tomoyo* share on another box, call it *server*, to */mnt/tomoyo*.
+
+All I have to do is to put
+
+    fileSystems."/mnt/tomoyo" = {
+      device = "server:/tomoyo";
+      fsType = "nfs";
+    };
+
+Note that clients see the exposed shares as if they were exposed at the root level: */export/foo* becomes */foo* when client is concerned with mounting it. Regular **fileSystems** options apply.
+
+If you experience trouble with NFS mounts failing on boot because the network is not ready, try adding the following line in your fileSystems mount definition:
+
+      options = "x-systemd.automount,noauto";
+
+That way, the NFS mount action won't actually be performed until the first time the mountpoint is accessed.
+
+[Category:Services](/Category:Services "wikilink")
