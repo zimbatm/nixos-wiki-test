@@ -1,0 +1,12 @@
+# Site settings
+title: NixOS Wiki
+email: foo@bar.com
+description: >
+  Write an awesome description for your new site here. You can edit this
+  line in _config.yml. It will appear in your document head meta (for
+  Google search results) and in your feed.xml site description.
+baseurl: "https://zimbatm.github.io/nixos-wiki-test"
+url: "http://nixos.org"
+
+# Build settings
+markdown: kramdown

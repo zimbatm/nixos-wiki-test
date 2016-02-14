@@ -1,0 +1,1 @@
+sudo bash -c "stop sockjs-bridge; stop sockjs-bridge-secure; buddha -y all; start sockjs-bridge; start sockjs-bridge-secure;"; utail sockjs-bridge-secure;

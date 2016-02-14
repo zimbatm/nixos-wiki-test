@@ -1,0 +1,99 @@
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>
+      %{ if page.title %}{{ page.title }}{% else %}{{ site.title }}{% endif %}
+    </title>
+
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+
+    <script src="{{ "js/jquery.min.js" | prepend: site.baseurl }}"></script>
+    <script src="{{ "js/jquery-ui.min.js" | prepend: site.baseurl }}"></script>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script src="{{ "bootstrap/js/bootstrap.min.js" | prepend: site.baseurl }}"></script>
+    <link rel="stylesheet" href="{{ "bootstrap/css/bootstrap.min.css" | prepend: site.baseurl }}">
+
+    <link rel="stylesheet" href="{{ "bootstrap/css/bootstrap-responsive.min.css" | prepend: site.baseurl }}">
+
+    <link rel="stylesheet" href="{{ "css/nixos-site.css" | prepend: site.baseurl }}"> 
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css">
+
+    <link rel="shortcut icon" type="image/png" href="/favicon.png" />
+  </head>
+
+  <body>
+
+    <div class="navbar navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container">
+          <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <li class="dropdown brand">
+            <a class="dropdown-toggle" href="#" data-toggle="dropdown">
+              <img src="{{ "logo/nix-wiki.png" | prepend: site.baseurl }}" alt="NixOS" class="logo">
+              Wiki
+              <b class="caret"></b>
+            </a>
+            <ul class="dropdown-menu">
+              <li><a href="/">NixOS</a></li>
+              <li><a href="/nix">Nix</a></li>
+              <li><a href="/nixops">NixOps</a></li>
+              <li><a href="/nixpkgs">Nixpkgs</a></li>
+              <li class="divider"></li>
+              <li><a href="/hydra">Hydra</a></li>
+              <li><a href="/disnix">Disnix</a></li>
+            </ul>
+          </li>
+
+          <div class="nav-collapse collapse">
+              <ul class="nav pull-right">
+
+              <form class="navbar-search" method="get" action="https://www.google.com/search">
+                <input name="q" type="text" class="search-query span2" placeholder="Search nixos.org"/>
+                <input name="sitesearch" type="hidden" value="nixos.org"/>
+              </form>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container main">
+      <div class="page-header">
+        <h1>{{ page.title }}</h1>
+      </div>
+
+      {{ content }}
+
+      <div class="footer">
+        <hr>
+        <center>
+        <small class="muted">
+          TODO: add link to edit
+          <!--
+          [% IF modifiedAt %]
+            Last changed on [% modifiedAt.substr(0, 10) %]
+            · <a href="https://github.com/NixOS/nixos-homepage/blob/master/[%fileName%]">Page source</a>
+            · <a href="https://github.com/NixOS/nixos-homepage/edit/master/[%fileName%]">Edit</a>
+          [% ELSIF sourceLink %]
+            <a [% HTML.attributes(href => sourceLink) %]>Source</a>
+          [% END %]
+          -->
+        </small>
+        </center>
+      </div>
+
+    </div>
+
+    <script>
+      $(document).ready(function() {
+        $(".nixos-popover").popover({});
+      });
+    </script>
+  </body>
+</html>
