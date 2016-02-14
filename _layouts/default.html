@@ -2,7 +2,7 @@
   <head>
     <meta charset="utf-8">
     <title>
-      {{ page.title }}
+      {{ page.title || site.title }}
     </title>
 
     <meta http-equiv="X-UA-Compatible" content="IE=Edge">
@@ -74,16 +74,11 @@
         <hr>
         <center>
         <small class="muted">
-          TODO: add link to edit
-          <!--
-          [% IF modifiedAt %]
-            Last changed on [% modifiedAt.substr(0, 10) %]
-            · <a href="https://github.com/NixOS/nixos-homepage/blob/master/[%fileName%]">Page source</a>
-            · <a href="https://github.com/NixOS/nixos-homepage/edit/master/[%fileName%]">Edit</a>
-          [% ELSIF sourceLink %]
-            <a [% HTML.attributes(href => sourceLink) %]>Source</a>
-          [% END %]
-          -->
+          Last changed on {{ last_modified_at }}
+          ·
+          <a href="{{ site.data.nixos.repo_base}}/blob/master/{{ page.path }}">Page source</a>
+          ·
+          <a href="{{ site.data.nixos.repo_base }}/edit/master/{{ page.path }}">Edit</a>
         </small>
         </center>
       </div>
