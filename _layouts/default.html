@@ -2,22 +2,22 @@
   <head>
     <meta charset="utf-8">
     <title>
-      %{ if page.title %}{{ page.title }}{% else %}{{ site.title }}{% endif %}
+      {{ page.title }}
     </title>
 
     <meta http-equiv="X-UA-Compatible" content="IE=Edge">
 
-    <script src="{{ "js/jquery.min.js" | prepend: site.baseurl }}"></script>
-    <script src="{{ "js/jquery-ui.min.js" | prepend: site.baseurl }}"></script>
+    <script src="{{ "/js/jquery.min.js" | prepend: site.baseurl }}"></script>
+    <script src="{{ "/js/jquery-ui.min.js" | prepend: site.baseurl }}"></script>
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <script src="{{ "bootstrap/js/bootstrap.min.js" | prepend: site.baseurl }}"></script>
-    <link rel="stylesheet" href="{{ "bootstrap/css/bootstrap.min.css" | prepend: site.baseurl }}">
+    <script src="{{ "/bootstrap/js/bootstrap.min.js" | prepend: site.baseurl }}"></script>
+    <link rel="stylesheet" href="{{ "/bootstrap/css/bootstrap.min.css" | prepend: site.baseurl }}">
 
-    <link rel="stylesheet" href="{{ "bootstrap/css/bootstrap-responsive.min.css" | prepend: site.baseurl }}">
+    <link rel="stylesheet" href="{{ "/bootstrap/css/bootstrap-responsive.min.css" | prepend: site.baseurl }}">
 
-    <link rel="stylesheet" href="{{ "css/nixos-site.css" | prepend: site.baseurl }}"> 
+    <link rel="stylesheet" href="{{ "/css/nixos-site.css" | prepend: site.baseurl }}"> 
     <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css">
 
     <link rel="shortcut icon" type="image/png" href="/favicon.png" />
@@ -35,7 +35,7 @@
           </button>
           <li class="dropdown brand">
             <a class="dropdown-toggle" href="#" data-toggle="dropdown">
-              <img src="{{ "logo/nix-wiki.png" | prepend: site.baseurl }}" alt="NixOS" class="logo">
+              <img src="{{ "/logo/nix-wiki.png" | prepend: site.baseurl }}" alt="NixOS" class="logo">
               Wiki
               <b class="caret"></b>
             </a>
